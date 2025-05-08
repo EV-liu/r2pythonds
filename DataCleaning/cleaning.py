@@ -1,15 +1,14 @@
 import pandas as pd
 import os
-from DataProcessor.Helpers import enforce_schema
-from DataProcessor.Schema import SampleSchema, HighPHSchema, LowPHSchema
-
 import sys
-# Dynamically add the parent directory of DataProcessor to sys.path
-current_file_path = os.path.abspath(__file__)
-data_processor_parent = os.path.dirname(os.path.dirname(current_file_path))
-if data_processor_parent not in sys.path:
-    sys.path.insert(0, data_processor_parent)
-    
+
+# This tells Python where the root directory of your project is
+basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(basedir)
+
+from Helpers import enforce_schema
+from Schema import SampleSchema, HighPHSchema, LowPHSchema
+
 UNWANTEDCOLUMNS = ['Batch']
 
 class Cleaing:
@@ -70,4 +69,3 @@ if __name__ == "__main__":
     cleaning = Cleaing()
     result = cleaning.preprocess()
     print(result.shape)
-    
