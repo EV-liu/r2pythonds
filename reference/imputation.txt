@@ -1,0 +1,45 @@
+# imputation
+# Load necessary library
+library(BiocManager)
+
+BiocManager::install("pcaMethods")
+BiocManager::install("impute")
+
+install.packages("imputeLCMD")
+
+update.packages(ask = FALSE)
+
+library(impute)
+library(imputeLCMD)
+
+# Step 1: Calculate the missing rate for each target, remove injectionID column
+missing_rate <- colMeans(is.na(df[, -1]))
+
+# Step 2: Remove targets with more than 20% missing data
+df_filtered <- df[, c(TRUE, missing_rate <= 0.20)]
+
+# Step 3: Impute the remaining missing data using QRILC
+# Extract the data to be imputed (excluding the SampleID column)
+data_to_impute <- df_filtered[, -1]
+
+# Example: log2-transform if not already done
+data_log <- log2(data_to_impute)  
+
+# QRILC only accepts matrices
+data_matrix <- as.matrix(data_log)
+
+set.seed(123)
+# Impute using MinProb
+imputed <- imputeLCMD::impute.QRILC(data_matrix, tune.sigma = 1)[[1]]
+
+# Check result
+str(imputed)  # should be a matrix
+
+imputed_df <- cbind(injectionID = df[,1], imputed)
+
+# imputated_df <- read.csv("imputated.csv", header = TRUE)
+colnames(imputated_df)[1] <- "injectionID"
+
+merged_df <- merge(imputated_df, sample_info, by = "injectionID", all.x = TRUE)
+
+
