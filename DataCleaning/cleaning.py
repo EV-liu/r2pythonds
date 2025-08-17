@@ -6,12 +6,15 @@ import sys
 basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(basedir)
 
-from Helpers import enforce_schema
+from Helpers import enforce_schema, detect_changes_between_dataframes
 from Schema import SampleSchema, HighPHSchema, LowPHSchema
 
+# Customized unwanted columns in input files
 UNWANTEDCOLUMNS = ['Batch']
+# Everytime running new preprocess, please load files to input directory and update the PROCESSFILES list
+PROCESSFILES = ['sample.xlsx', 'highPH.xlsx', 'lowPH.xlsx']
 
-class Cleaing:
+class Cleaning:
     """This class includes methods for loading excel files, mergeing multiple files, droping duplicates and filtering."""
 
     def __init__(self):
@@ -20,10 +23,13 @@ class Cleaing:
 
     def preprocess(self):
         """Preprocess the data loaded, cleanup and merge."""
-        df_sample = self.load_excel('sample.xlsx')
-        df_highPH = self.load_excel('highPH.xlsx')
-        df_lowPH = self.load_excel('lowPH.xlsx')
-        
+        for file_name in PROCESSFILES:
+            self.dataframes[file_name] = self.load_excel(file_name)
+
+        df_sample = self.dataframes['sample.xlsx']
+        df_highPH = self.dataframes['highPH.xlsx']
+        df_lowPH = self.dataframes['lowPH.xlsx']
+
         # filter unwanted columns of highPH and lowPH
         df_highPH = df_highPH.drop(columns=UNWANTEDCOLUMNS, errors='ignore')
         df_lowPH = df_lowPH.drop(columns=UNWANTEDCOLUMNS, errors='ignore')
@@ -63,9 +69,37 @@ class Cleaing:
  
         return df
     
+    def test(self):
+        """Test the class methods."""
+        # Example test method
+        df1 = self.load_excel('sample.xlsx')
+        df2 = self.load_excel('sample.xlsx')
+
+        # Add a new column with all values set to 'test' for testing purpose
+        df2['NewColumn'] = 'test'
+        # Change the value of a specific cell for testing purpose
+        df2.loc[1, 'Group'] = 'TESTING'
+
+        # This is the check columns list, and will be included in the result_df
+        columns_list = df2.columns.tolist()
+
+        # This is the demo of how to compare 2 dataframes, the result will contain check_columns and 2 new columns change_type, changes
+        df = detect_changes_between_dataframes(
+            df1,
+            df2,
+            check_columns=columns_list,
+            unique_key='SampleID',
+            detect_column_changes=True
+        )
+        # print out to verify the changes
+        print(df.to_string(index=False))
+    
 
 if __name__ == "__main__":
-    # Create an instance of the Cleaing class
-    cleaning = Cleaing()
-    result = cleaning.preprocess()
+    # Create an instance of the Cleaning class
+    cleaning_generator = Cleaning()
+    result = cleaning_generator.preprocess()
     print(result.shape)
+
+    # This is a sample of how to detect 2 dataframes, could be adopted to certain use cases
+    cleaning_generator.test()
