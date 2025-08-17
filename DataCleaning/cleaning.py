@@ -19,12 +19,14 @@ class Cleaning:
 
     def __init__(self):
         self.input_path = os.path.join(os.path.dirname(__file__), 'input')
+        self.output_path = os.path.join(os.path.dirname(__file__), 'output')
+        self.output_copy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Preprocessing', 'input')
         self.dataframes = {}
 
     def preprocess(self):
         """Preprocess the data loaded, cleanup and merge."""
         for file_name in PROCESSFILES:
-            self.dataframes[file_name] = self.load_excel(file_name)
+            self.dataframes[file_name] = self.extract_excel(file_name)
 
         df_sample = self.dataframes['sample.xlsx']
         df_highPH = self.dataframes['highPH.xlsx']
@@ -60,20 +62,33 @@ class Cleaning:
         else:
             df_final = df_test.merge(df_sample, on='injectionID', how='left')
 
+        self.load_csv('merged_DataCleaning_output.csv', df_final)
+
         return df_final
 
-    def load_excel(self, file_name):
+    def extract_excel(self, file_name):
         """Load all Excel files in the input folder as separate DataFrames."""
         full_path = os.path.join(self.input_path, file_name)
         df = pd.read_excel(full_path)
  
         return df
-    
+
+    def load_csv(self, file_name, df):
+        """Save result dataframes as CSV files in the output folder."""
+        if not os.path.exists(self.output_path):
+            os.makedirs(self.output_path, exist_ok=True)
+        df.to_csv(os.path.join(self.output_path, file_name), index=False)
+
+        # Copy the final output to the output_copy_path
+        if not os.path.exists(self.output_copy_path):
+            os.makedirs(self.output_copy_path, exist_ok=True)
+        df.to_csv(os.path.join(self.output_copy_path, file_name), index=False)
+
     def test(self):
         """Test the class methods."""
         # Example test method
-        df1 = self.load_excel('sample.xlsx')
-        df2 = self.load_excel('sample.xlsx')
+        df1 = self.extract_excel('sample.xlsx')
+        df2 = self.extract_excel('sample.xlsx')
 
         # Add a new column with all values set to 'test' for testing purpose
         df2['NewColumn'] = 'test'
