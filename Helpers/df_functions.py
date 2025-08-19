@@ -16,7 +16,7 @@ def enforce_schema(df, schema_class):
             elif dtype == float:
                 df[column] = df[column].fillna(0.0).astype('float')
             elif dtype == str:
-                df[column] = df[column].fillna("").astype('str')
+                df[column] = df[column].fillna("").astype('str').str.strip()
         else:
             # Add missing columns with default values
             if dtype == pd.Categorical:
@@ -29,26 +29,50 @@ def enforce_schema(df, schema_class):
                 df[column] = ""
     return df
 
-
-def detect_changes_between_dataframes(df_old: pd.DataFrame, df_actual: pd.DataFrame, check_columns: list, unique_key: str, detect_column_changes = False):
+def enforce_numeric_datatype(df: pd.DataFrame, columns: Union[str, List[str]]):
     """
-    This function reads dataframes, detecta the changes between them and flag the change details and return in the dataframe
+    Ensure specified columns in the DataFrame are numeric.
+    
+    Parameters:
+    df (pd.DataFrame): The DataFrame to modify.
+    columns (Union[str, List[str]]): Column name or list of column names to enforce numeric type.
+    
+    Returns:
+    pd.DataFrame: DataFrame with specified columns converted to numeric type.
+    """ 
+    for column in columns:
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors='coerce')
+        else:
+            warnings.warn(f"Column '{column}' not found in DataFrame.")
+    
+    return df
+
+def detect_changes_between_dataframes(
+    df_old: pd.DataFrame,
+    df_actual: pd.DataFrame,
+    check_columns: list,
+    unique_key: list[str],
+    detect_column_changes=False
+):
+    """
+    This function reads dataframes, detects the changes between them and flags the change details, returning a dataframe.
     ----------
     :param df_old: A dataframe with the old values
     :param df_actual: A dataframe with the actual value. This one will be compared to the old_df
     :param check_columns: list of column(s) which you want to be used to check for changes in data
-    :param unique_key: list of column(s) which you want to be used in order to group data.
+    :param unique_key: list of column(s) which you want to be used in order to group data. Must be a list of strings, even for a single column.
     :param detect_column_changes: detect new column as change
     :return: Returns a dataframe with desired check_columns and 2 new columns change_type (deleted, new or edited), changes (contains a dict with the changed fields and their old/new values)
     """
-    if not df_old[unique_key].is_unique:
-        print("Duplicated records:")
-        print(df_old[df_old[unique_key].duplicated(keep=False)].to_string())
-        raise ValueError('The unique_key column is not unique in the old dataframe')
-    if not df_actual[unique_key].is_unique:
-        print("Duplicated records:")
-        print(df_actual[df_actual[unique_key].duplicated(keep=False)].to_string())
-        raise ValueError('The unique_key column is not unique in the actual dataframe')
+    if not df_old.duplicated(subset=unique_key).sum() == 0:
+        print("Duplicated in df_old records:")
+        print(df_old[df_old.duplicated(subset=unique_key, keep=False)].to_string())
+        raise ValueError('The unique_key columns are not unique in the old dataframe')
+    if not df_actual.duplicated(subset=unique_key).sum() == 0:
+        print("Duplicated in df_actual records:")
+        print(df_actual[df_actual.duplicated(subset=unique_key, keep=False)].to_string())
+        raise ValueError('The unique_key columns are not unique in the actual dataframe')
     
     # Detect column changes and add missing columns to both dataframes
     if detect_column_changes:
@@ -63,12 +87,13 @@ def detect_changes_between_dataframes(df_old: pd.DataFrame, df_actual: pd.DataFr
         df_old = df_old.astype(dtype={key: 'object' for key in deleted_columns})
 
     # Check the datatype of columns in both dataframes
-    for column in check_columns + [unique_key]:
+    columns_to_check = check_columns + unique_key
+    for column in columns_to_check:
         # int64 and float64 are an exception: a combination of these two types works fine
         if not (df_old[column].dtype in ['int64', 'float64'] and df_actual[column].dtype in ['int64', 'float64']) \
                 and not df_old[column].dtype == df_actual[column].dtype:
-            raise ValueError(f'The types of the column \'{column}\' do not correspond between df_old ('
-                                f'{df_old[column].dtype}) and df_actual ({df_actual[column].dtype}).')
+            raise ValueError(f"The types of the column '{column}' do not correspond between df_old ("
+                             f"{df_old[column].dtype}) and df_actual ({df_actual[column].dtype}).")
     
     # Detect changes in column values
     merged_df = pd.merge(df_old, df_actual, on=unique_key, how='outer', suffixes=('_old', '_actual'), indicator=True)
@@ -98,11 +123,9 @@ def detect_changes_between_dataframes(df_old: pd.DataFrame, df_actual: pd.DataFr
     merged_df['change_type'] = merged_df.apply(determine_change_type, axis=1)
 
     # Filter relevant columns for the result
-    check_columns = [f"{col}_actual" for col in check_columns if col not in [unique_key]]
-    result_columns = list(set([unique_key] + check_columns + ['change_type', 'changes']))    
-    
+    check_columns_actual = [f"{col}_actual" for col in check_columns if col not in unique_key]
+    result_columns = list(set(unique_key + check_columns_actual + ['change_type', 'changes']))
     result_df = merged_df[result_columns]
-
     return result_df
 
 
