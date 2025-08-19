@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import types, numpy as _np
+from datetime import datetime
 
 # This tells Python where the root directory of your project is
 basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +22,8 @@ class Imputation:
         self.output_path = os.path.join(os.path.dirname(__file__), 'output')
         self.output_copy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PCA', 'input')
         self.dataframes = {}
+        # Add a timestamp attribute for file naming
+        self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
     def impute_missing_values(self):
         """Impute missing values in the dataframe."""
@@ -63,9 +66,12 @@ class Imputation:
 
             # VERIFY IMPUTED VALUES WITH R
             self.compare_imputed_results(injection_ids, data_log, imputed_df)
+            import time
+            time.sleep(2)
+            # Update timestamp for the second output
+            self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             df_R_IMPUTED = self.extract_csv(R_IMPUTED)
             df_R_IMPUTED = df_R_IMPUTED.drop(columns=['Group'], errors='ignore').merge(injection_ids, on='SampleID', how='left')
-            df_R_IMPUTED = enforce_numeric_datatype(df_R_IMPUTED, (set(df_R_IMPUTED.columns)))
             self.compare_imputed_results(injection_ids, data_log, df_R_IMPUTED)
             # COMPARE THE IMPUTED RESULTS MANUALLY BEFORE MOVING ON
 

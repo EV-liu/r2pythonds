@@ -1,0 +1,55 @@
+﻿SampleID,injectionID,Group
+61,46,NGBB
+62,23,NGBB
+63,50,NGBB
+71,27,FMT_NGBB
+72,45,FMT_NGBB
+73,33,FMT_NGBB
+81,17,Chow control
+82,28,Chow control
+83,2,Chow control
+91,36,Placebo
+92,10,Placebo
+93,42,Placebo
+101,19,FMT_NGBB
+102,40,FMT_NGBB
+111,54,Chow control
+112,51,Chow control
+113,35,Chow control
+121,53,Placebo
+122,38,Placebo
+131,20,FMT_NGBB
+132,47,FMT_NGBB
+141,15,NGBB
+142,25,NGBB
+143,41,NGBB
+152,13,FMT
+153,7,FMT
+161,31,NGBB
+162,22,NGBB
+163,6,NGBB
+171,26,FMT
+172,21,FMT
+173,18,FMT
+181,12,Chow control
+182,49,Chow control
+183,4,Chow control
+192,16,FMT_NGBB
+193,1,FMT_NGBB
+201,48,Placebo
+202,24,Placebo
+203,30,Placebo
+211,8,Placebo
+212,52,Placebo
+213,9,Placebo
+221,5,FMT
+222,29,FMT
+223,14,FMT
+231,34,Chow control
+232,11,Chow control
+233,3,Chow control
+241,44,NGBB
+243,39,NGBB
+251,43,FMT_NGBB
+252,32,FMT_NGBB
+253,37,FMT_NGBB
