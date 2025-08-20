@@ -1,0 +1,148 @@
+
+# Principal Components Analysis
+# Description
+# Performs a principal components analysis on the given data matrix and returns the results as an object of class prcomp.
+# 
+# Usage
+# prcomp(x, ...)
+# 
+# ## S3 method for class 'formula'
+# prcomp(formula, data = NULL, subset, na.action, ...)
+# 
+# ## Default S3 method:
+# prcomp(x, retx = TRUE, center = TRUE, scale. = FALSE,
+#        tol = NULL, rank. = NULL, ...)
+## S3 method for class 'prcomp'
+# predict(object, newdata, ...)
+# Arguments
+# formula	
+# a formula with no response variable, referring only to numeric variables.
+# 
+# data	
+# an optional data frame (or similar: see model.frame) containing the variables in the formula formula. By default the variables are taken from environment(formula).
+# 
+# subset	
+# an optional vector used to select rows (observations) of the data matrix x.
+# 
+# na.action	
+# a function which indicates what should happen when the data contain NAs. The default is set by the na.action setting of options, and is na.fail if that is unset. The ‘factory-fresh’ default is na.omit.
+# 
+# ...	
+# arguments passed to or from other methods. If x is a formula one might specify scale. or tol.
+# 
+# x	
+# a numeric or complex matrix (or data frame) which provides the data for the principal components analysis.
+# 
+# retx	
+# a logical value indicating whether the rotated variables should be returned.
+# 
+# center	
+# a logical value indicating whether the variables should be shifted to be zero centered. Alternately, a vector of length equal the number of columns of x can be supplied. The value is passed to scale.
+# 
+# scale.	
+# a logical value indicating whether the variables should be scaled to have unit variance before the analysis takes place. The default is FALSE for consistency with S, but in general scaling is advisable. Alternatively, a vector of length equal the number of columns of x can be supplied. The value is passed to scale.
+# 
+# tol	
+# a value indicating the magnitude below which components should be omitted. (Components are omitted if their standard deviations are less than or equal to tol times the standard deviation of the first component.) With the default null setting, no components are omitted (unless rank. is specified less than min(dim(x)).). Other settings for tol could be tol = 0 or tol = sqrt(.Machine$double.eps), which would omit essentially constant components.
+# 
+# rank.	
+# optionally, a number specifying the maximal rank, i.e., maximal number of principal components to be used. Can be set as alternative or in addition to tol, useful notably when the desired rank is considerably smaller than the dimensions of the matrix.
+# 
+# object	
+# object of class inheriting from "prcomp"
+# 
+# newdata	
+# An optional data frame or matrix in which to look for variables with which to predict. If omitted, the scores are used. If the original fit used a formula or a data frame or a matrix with column names, newdata must contain columns with the same names. Otherwise it must contain the same number of columns, to be used in the same order.
+
+df_PCA <- cbind(sample = df_pqn_TG_NAS[, 2], group = df_pqn_TG_NAS[,3],df_pqn_TG_NAS[4:140])
+df_PCA <- as.data.frame(df_PCA)
+# df_PCA$cage <- substr(as.character(df_PCA$SampleID), 1, nchar(as.character(df_PCA$SampleID)) - 1)
+# df_PCA <- df_PCA[, c(1:6, 140, 7:139)]
+
+#turn all columns to numeric
+df_PCA[3:ncol(df_PCA)] <- lapply(df_PCA[3:ncol(df_PCA)], as.numeric)
+
+lipid_pca <- prcomp(df_PCA[8:ncol(df_PCA)], scale. = TRUE)
+summary(lipid_pca)
+
+####draw plot to show proportion of variance
+# Extract eigenvalues (squared singular values) from PCA results
+eigenvalues <- (lipid_pca$sdev)^2
+
+# Calculate proportion of variance explained by each principal component
+variance_explained <- eigenvalues / sum(eigenvalues)
+
+# Calculate cumulative proportion of variance explained
+cumulative_variance <- cumsum(variance_explained)
+
+# Create a dataframe for plotting
+variance_data <- data.frame(Principal_Component = 1:length(variance_explained),
+                            Variance_Explained = variance_explained,
+                            Cumulative_Variance = cumulative_variance)
+
+# Plot proportion of variance explained by principal components
+library(ggplot2)
+
+ggplot(variance_data, aes(x = Principal_Component, y = Variance_Explained)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Proportion of Variance Explained by Principal Components_",
+       x = "Principal Component",
+       y = "Proportion of Variance Explained") +
+  theme_minimal()
+
+###plots for pca results
+plot(lipid_pca,type="lines")
+
+scores <- data.frame(PC1 = lipid_pca$x[,1], PC2 = lipid_pca$x[,2], group = df_PCA$group, sample = df_PCA$sample,cage = df_PCA$cage, steatosis = df_PCA$Steatosis, inflammation = df_PCA$Inflammation)
+scores <- data.frame(PC1 = lipid_pca$x[,1], PC2 = lipid_pca$x[,2], group = df_PCA$group, sample = df_PCA$sample,cage = df_PCA$cage, steatosis = df_PCA$Steatosis, inflammation = df_PCA$Inflammation)
+
+scores$group <- as.factor(scores$group)
+# Identify the points with the highest PC1 and PC2 values
+highest_PC1 <- scores[which.max(scores$PC1), ]
+highest_PC2 <- scores[which.min(scores$PC2), ]
+
+# Combine these points into a single data frame
+outliers <- rbind(highest_PC1, highest_PC2)
+library(ggplot2)
+ggplot(scores, aes(x = PC1, y = PC2, color = group, shape = inflam)) +
+  geom_point(size = 3) + # Use hollow circles
+  stat_ellipse(aes(group = group), type = "t", level = 0.95) + # This adds the ellipses
+  theme_classic() +
+  labs(title = "PCA Plot by group (inflammation)", x = "PC1 (21.02%)", y = "PC2 (12.52%)") +
+  theme(legend.position = "right") +
+  scale_color_discrete(name = "group") +
+  geom_point(data = outliers, aes(x = PC1, y = PC2), size = 4) + # Highlight outliers
+  geom_text(data = outliers, aes(label = sample), vjust = -1, hjust = 1, color = "red")
+
+scores$group <- as.factor(scores$group)
+scores$cage <- as.factor(scores$cage)
+scores$steatosis <- as.factor(scores$steatosis)
+scores$inflammation <- as.factor(scores$inflammation)
+
+scores$steat <- ifelse(scores$steatosis == 0, "no", "yes")
+scores$steat <- as.factor(scores$steat)
+
+scores$inflam <- ifelse(scores$inflammation == 0, "no", "yes")
+scores$inflam <- as.factor(scores$inflam)
+
+# another way to draw pca plot(2D)
+library(ggplot2)
+library(factoextra)
+library(FactoMineR)
+
+lipid_df <- plasma_TG
+
+# 44:ncol(lipid_df) are targets columns
+iris.pca <- PCA(lipid_df[44:ncol(lipid_df)], graph = FALSE)
+fviz_pca_ind(iris.pca,
+             geom.ind = "point", 
+             pointsize = 5,
+             pointshape = 21,
+             fill.ind = lipid_df$Diagnost_AP, # Use the disease group for coloring
+             palette = "lacent",
+             addEllipses = TRUE,
+             legend.title = "Disease Groups",
+             title = "PCA Plot in plasma[TG]") +
+  theme_bw()+
+  theme(plot.title = element_text(size = 20))  # Adjust the title size here
