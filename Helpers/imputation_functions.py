@@ -24,6 +24,19 @@ import numpy as np
 import pandas as pd
 from scipy.stats import truncnorm, norm
 
+
+def _quantile_linear(x: np.ndarray, probs: np.ndarray) -> np.ndarray:
+    """Quantile with explicit linear method, compatible across NumPy versions.
+
+    - Prefer method="linear" (NumPy >=1.22) which aligns well with R type=7.
+    - Fallback to interpolation="linear" for older NumPy releases.
+    """
+    try:
+        return np.quantile(x, probs, method="linear")  # type: ignore[call-arg]
+    except TypeError:
+        # Older NumPy versions use 'interpolation' instead of 'method'
+        return np.quantile(x, probs, interpolation="linear")
+
 @dataclass
 class QQFit:
     mean: float
@@ -57,20 +70,17 @@ def _qq_fit_normal(y_observed: np.ndarray, upper_q: float = 0.99):
 
     # Empirical quantiles at probs 0.001, 0.011, ..., upper_q+0.001 (~100 points)
     probs_emp = _quantile_seq(0.001, upper_q + 0.001, 0.01)
-    # Use default quantile method for broad NumPy compatibility
-    q_emp = np.quantile(y, probs_emp)
+    # Use explicit 'linear' method to align with R quantile type=7 behavior
+    q_emp = _quantile_linear(y, probs_emp)
 
     def fit_for_pnas(pnas: float) -> Optional[QQFit]:
         start = float(pnas) + 0.001
         stop = upper_q + 0.001
-        step = (upper_q - float(pnas)) / (upper_q * 100.0) if upper_q > 0 else 0.0
-        if step <= 0 or start >= stop:
+        # Ensure valid interval and generate exactly 100 theoretical probs
+        if not (np.isfinite(start) and np.isfinite(stop)) or start >= stop:
             return None
-        probs_theor = _quantile_seq(start, stop, step)
-        # Align lengths (robust to rounding differences)
-        m = min(probs_theor.shape[0], q_emp.shape[0])
-        probs_theor = probs_theor[:m]
-        q_emp_fit = q_emp[:m]
+        probs_theor = np.linspace(start, stop, 100, dtype=float)
+        q_emp_fit = q_emp  # already 100 points
         q_theor = norm.ppf(probs_theor, loc=0.0, scale=1.0)
 
         # OLS fit: q_emp_fit = a + b * q_theor
@@ -122,7 +132,9 @@ def impute_left_censored(
     Returns
     - pandas DataFrame with imputed values.
     """
-    rng = np.random.default_rng(seed)
+    # rng = np.random.default_rng(seed)
+    # Choose RNG backend. "mt19937" uses RandomState to be closer to R's MT.
+    rng = np.random.RandomState(None if seed is None else int(seed))
     UPPER_Q = 0.99  # Fixed upper quantile used for QQ fit, matching the R code
 
     values = data.values.astype(float, copy=True)
