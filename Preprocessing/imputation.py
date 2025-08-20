@@ -64,24 +64,18 @@ class Imputation:
             # step 6 join back injectionID and non-numeric columns
             imputed_df = pd.concat([injection_ids, imputed_df], axis=1)
 
-            # VERIFY IMPUTED VALUES WITH R
-            self.compare_imputed_results(injection_ids, data_log, imputed_df)
-            import time
-            time.sleep(2)
-            # Update timestamp for the second output
-            self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            df_R_IMPUTED = self.extract_csv(R_IMPUTED)
-            df_R_IMPUTED = df_R_IMPUTED.drop(columns=['Group'], errors='ignore').merge(injection_ids, on='SampleID', how='left')
-            self.compare_imputed_results(injection_ids, data_log, df_R_IMPUTED)
-            # COMPARE THE IMPUTED RESULTS MANUALLY BEFORE MOVING ON
+            # # VERIFY IMPUTED VALUES WITH R
+            # self.compare_imputed_results(injection_ids, data_log, imputed_df)
+            # import time
+            # time.sleep(2)
+            # # Update timestamp for the second output
+            # self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            # df_R_IMPUTED = self.extract_csv(R_IMPUTED)
+            # df_R_IMPUTED = df_R_IMPUTED.drop(columns=['Group'], errors='ignore').merge(injection_ids, on='SampleID', how='left')
+            # self.compare_imputed_results(injection_ids, data_log, df_R_IMPUTED)
+            # # COMPARE THE IMPUTED RESULTS MANUALLY BEFORE MOVING ON
 
-            # step 7 join also sample_info
-            sample_info = self.extract_csv(sampleId_file)
-            merged_df = pd.concat([injection_ids, imputed_df], axis=1)
-            
-            merged_df = merged_df.merge(sample_info, on='injectionID', how='left')
-
-            self.load_csv(f"merged_Imputed_output.csv", merged_df)
+            self.load_csv(f"merged_Imputed_output.csv", imputed_df)
 
     def extract_csv(self, file_name):
         """Load a CSV file from the input folder."""
