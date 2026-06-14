@@ -1,3 +1,8 @@
+# First step of this project: Data Cleaning. 
+# This script will load the excel files(including exported data from Mzquality and a sample info file), clean up the data 
+# (including filter records, rename columns, extract column values, deduplicate columns and enforce schema),
+# and merge them into one result dataframe. 
+# The final output will be saved as csv file in the output folder, and also copied to the Preprocessing/input folder for the next step.
 import pandas as pd
 import os
 import sys
@@ -44,7 +49,7 @@ class Cleaning:
         df_highPH.columns.values[0] = 'injectionID'
         df_lowPH.columns.values[0] = 'injectionID'
 
-        # Normalize injectionID in both DataFrames before merging
+        # Extract only the numeric part of injectionID in both DataFrames before merging
         df_highPH['injectionID'] = df_highPH['injectionID'].astype(str).str.extract(r'_(\d+)_')[0].str.lstrip('0')
         df_lowPH['injectionID'] = df_lowPH['injectionID'].astype(str).str.extract(r'_(\d+)_')[0].str.lstrip('0')
 
