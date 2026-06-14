@@ -1,3 +1,6 @@
+# Second step of this project: Imputation. 
+# This script will load the cleaned data from the previous DataCleaning step, 
+# impute the missing values, and save the result as a csv file in the output folder for the next step.
 import pandas as pd
 import numpy as np
 import os

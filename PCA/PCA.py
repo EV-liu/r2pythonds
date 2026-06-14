@@ -1,3 +1,5 @@
+# Third step of this project: performs Principal Components Analysis (PCA) on the imputed dataset and generates PCA plots.
+
 import pandas as pd
 import numpy as np
 import os
@@ -13,8 +15,7 @@ from matplotlib.patches import Ellipse
 basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(basedir)
 
-from Helpers import impute_left_censored, enforce_numeric_datatype, detect_changes_between_dataframes
-from Schema.sample_schema import SampleSchema
+from Helpers import enforce_numeric_datatype
 
 
 class PCAPrcomp:
@@ -24,7 +25,7 @@ class PCAPrcomp:
     def __init__(self):
         self.input_path = os.path.join(os.path.dirname(__file__), 'input')
         self.output_path = os.path.join(os.path.dirname(__file__), 'output')
-        self.output_copy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PCA', 'input')
+        # self.output_copy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PCA', 'input')
         os.makedirs(self.output_path, exist_ok=True)
         os.makedirs(self.output_copy_path, exist_ok=True)
 
@@ -106,7 +107,7 @@ class PCAPrcomp:
         plt.show()
  
     def pca_prcomp(self, df):
-        """Perform PCA using the prcomp method in python."""
+        """Perform PCA using the sklearn PCA prcomp method in python."""
         df = df.iloc[:, 3:]
         feature_cols = list(df.columns)
         df = enforce_numeric_datatype(df, (feature_cols))
@@ -157,10 +158,10 @@ class PCAPrcomp:
             os.makedirs(self.output_path, exist_ok=True)
         df.to_csv(os.path.join(self.output_path, file_name), index=False)
 
-        # Copy the final output to the output_copy_path
-        if not os.path.exists(self.output_copy_path):
-            os.makedirs(self.output_copy_path, exist_ok=True)
-        df.to_csv(os.path.join(self.output_copy_path, file_name), index=False)
+        # # Copy the final output to the output_copy_path
+        # if not os.path.exists(self.output_copy_path):
+        #     os.makedirs(self.output_copy_path, exist_ok=True)
+        # df.to_csv(os.path.join(self.output_copy_path, file_name), index=False)
 
     
 if __name__ == "__main__":
