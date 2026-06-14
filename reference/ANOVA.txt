@@ -1,0 +1,157 @@
+# ANOVA
+# Load necessary libraries ------
+library(readr)
+
+liver_data <- read.csv("data/5-unblinded data/liver_transformed.csv")
+
+data <- cbind(merged_Imputed_output, disease = merged_Imputed_output$disease)
+
+data$disease <- as.factor(data$disease)
+str(data)
+
+###
+# normality ------
+
+# Initialize lists to store the results
+anova_targets <- list()
+non_anova_targets <- list()
+
+# Loop over each target
+for (target in colnames(data)[1:ncol(data)-1]) {  # Adjust this based on your data frame
+  target_data <- data[[target]]
+  
+  # Shapiro-Wilk Test
+  shapiro_test_result <- shapiro.test(target_data)
+  
+  # Levene's Test
+  levene_test_result <- car::leveneTest(target_data, data$disease)
+  
+  # If both conditions are met, perform ANOVA and add to 'anova_targets'
+  if (shapiro_test_result$p.value > 0.05 && levene_test_result[1, "Pr(>F)"] > 0.05) {
+    aov_result <- aov(target_data ~ data$disease)
+    anova_targets[[target]] <- summary(aov_result)
+  } else {
+    # If not, add to 'non_anova_targets'
+    non_anova_targets <- c(non_anova_targets, target)
+  }
+}
+
+ANOVA_target <- do.call(rbind, anova_targets)
+non_ANOVA_target <- do.call(rbind, non_anova_targets)
+non_ANOVA_target <- as.data.frame(non_ANOVA_target)
+a <- rownames(ANOVA_target)
+n <- non_ANOVA_target$V1
+
+###
+# ANOVA -------
+
+# Let's assume you have a data frame 'df' and 'group' is your categorical variable and 'value' is your continuous variable.
+
+# Create an empty list to store the ANOVA results
+
+anova_results <- list()
+
+# Loop over each target
+for (target in a) {
+  
+  # Perform ANOVA
+  anova_result <- aov(as.formula(paste(target, "~ disease")), data = data)
+  
+  tukey <- TukeyHSD(anova_result)
+  
+  p_values <- tukey[[1]][, "p adj"]
+  
+  anova_results[[target]] <- data.frame(Comparison = rownames(tukey[[1]]),P_Value = p_values)
+  
+}
+ANOVA <- do.call(rbind, anova_results)
+
+library(tibble)
+library(tidyr)
+
+# Add row names as a new column
+ANOVA <- rownames_to_column(ANOVA, var = "Target")
+ANOVA$Target <- sub("\\.[^\\.]*$", "", ANOVA$Target)
+ANOVA$q_value <- p.adjust(ANOVA$P_Value, method = "fdr")
+ANOVA_q <- subset(ANOVA, select = -P_Value)
+q_value_between_disease_groups_A <- pivot_wider(ANOVA_q, names_from = Target, values_from = q_value)
+
+ANOVA_p <- subset(ANOVA, select = -q_value)
+p_value_between_disease_groups_A <- pivot_wider(ANOVA_p, names_from = Target, values_from = P_Value)
+
+###
+# Wilcoxon test ---------
+
+# Create an empty list to store the Wilcoxon results
+wilcoxon_results <- list()
+
+# Loop over each target
+for (target in n) {
+  
+  # Perform pairwise Wilcoxon tests
+  wilcoxon_result <- pairwise.wilcox.test(data[[target]], data$disease, p.adjust.method = "none")
+  
+  # Get the comparisons and p-values
+  comparisons <- expand.grid(rownames(wilcoxon_result$p.value), colnames(wilcoxon_result$p.value))
+  comparisons <- paste(comparisons$Var1, comparisons$Var2, sep="-")
+  p_values <- as.vector(wilcoxon_result$p.value)
+  
+  # Create a data frame for this target
+  wilcoxon_results[[target]] <- data.frame(Target = rep(target, length(p_values)), Comparison = comparisons, P_Value = p_values) 
+
+}
+
+# Combine all results into one data frame
+Wilcoxon <- do.call(rbind, wilcoxon_results)
+# Remove row names
+rownames(Wilcoxon) <- NULL
+# Remove rows with NA values
+Wilcoxon <- na.omit(Wilcoxon)
+Wilcoxon$q_value <- p.adjust(Wilcoxon$P_Value, method = "fdr")
+Wilcoxon_q <- subset(Wilcoxon, select = -P_Value)
+q_value_between_disease_groups_W <- pivot_wider(Wilcoxon_q, names_from = Target, values_from = q_value)
+
+Wilcoxon_p <- subset(Wilcoxon, select = -q_value)
+p_value_between_disease_groups_W <- pivot_wider(Wilcoxon_p, names_from = Target, values_from = P_Value)
+
+
+###
+# results -----------
+
+q_for_all_wide <- full_join(q_value_between_disease_groups_A, q_value_between_disease_groups_W)
+q_for_all_long <- full_join(ANOVA_q, Wilcoxon_q)
+
+write.csv(q_for_all_long, "data/9-ANOVA/20250827/liver_q for all_ANOVA&Wilcoxon_long.csv", row.names =  FALSE)
+write.csv(q_for_all_wide, "data/9-ANOVA/20250827/liver_q for all_ANOVA&Wilcoxon_wide.csv", row.names =  FALSE)
+
+p_for_all_wide <- full_join(p_value_between_disease_groups_A, p_value_between_disease_groups_W)
+p_for_all_long <- full_join(ANOVA_p, Wilcoxon_p)
+
+write.csv(p_for_all_long, "data/9-ANOVA/20250827/liver_p for all_ANOVA&Wilcoxon_long.csv", row.names =  FALSE)
+write.csv(p_for_all_wide, "data/9-ANOVA/20250827/liver_p for all_ANOVA&Wilcoxon_wide.csv", row.names =  FALSE)
+
+
+library(dplyr)
+
+# Filter the dataset to keep rows where P_Value < 0.05
+filtered_sig <- q_for_all_long %>% filter(q_value < 0.05)
+wide_filtered_sig <- pivot_wider(filtered_sig, names_from = Target, values_from = q_value)
+
+filtered_sig$Target <- sub("^.{4}", "", filtered_sig$Target)  # Remove the first 4 characters
+filtered_sig$group <- sub("\\d.*$", "", filtered_sig$Target)  # Remove all characters after (and including) the first digit
+filtered_sig$group <- sub("_$", "", filtered_sig$group)
+
+wide_filtered_sig <- pivot_wider(filtered_sig, names_from = Target, values_from = q_value)
+
+# Count non-NA values in each column
+count_non_na <- summarise_all(wide_filtered_sig, ~sum(!is.na(.)))
+
+# Add the new row to the dataset
+wide_filtered_sig <- rbind(wide_filtered_sig, count_non_na)
+
+wide_filtered_sig[4,1] <- "Significance"
+
+write.csv(wide_filtered_sig, "data/9-ANOVA/liver_significant targets for all_ANOVA&Wilcoxon.csv")
+write.csv(filtered_sig, "data/9-ANOVA/liver_significant targets for all_ANOVA&Wilcoxon_long.csv", row.names =  FALSE)
+
+a <- read.csv("data/9-ANOVA/liver_significant targets for all_ANOVA&Wilcoxon_long.csv")
