@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import os
 import sys
-import types, numpy as _np
 from datetime import datetime
 
 # This tells Python where the root directory of your project is
@@ -23,7 +22,9 @@ class Imputation:
     def __init__(self):
         self.input_path = os.path.join(os.path.dirname(__file__), 'input')
         self.output_path = os.path.join(os.path.dirname(__file__), 'output')
-        self.output_copy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PCA', 'input')
+        self.output_copy_path_1 = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PCA', 'input')
+        self.output_copy_path_2 = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ANOVA', 'input')
+
         self.dataframes = {}
         # Add a timestamp attribute for file naming
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -92,10 +93,15 @@ class Imputation:
             os.makedirs(self.output_path, exist_ok=True)
         df.to_csv(os.path.join(self.output_path, file_name), index=False)
 
-        # Copy the final output to the output_copy_path
-        if not os.path.exists(self.output_copy_path):
-            os.makedirs(self.output_copy_path, exist_ok=True)
-        df.to_csv(os.path.join(self.output_copy_path, file_name), index=False)
+        # Copy the final output to the output_copy_path_1
+        if not os.path.exists(self.output_copy_path_1):
+            os.makedirs(self.output_copy_path_1, exist_ok=True)
+        df.to_csv(os.path.join(self.output_copy_path_1, file_name), index=False)
+
+        # Copy the final output to the output_copy_path_2
+        if not os.path.exists(self.output_copy_path_2):
+            os.makedirs(self.output_copy_path_2, exist_ok=True)
+        df.to_csv(os.path.join(self.output_copy_path_2, file_name), index=False)
 
     
     def compare_imputed_results(self, df_injection, df1, df2):

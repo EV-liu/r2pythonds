@@ -4,7 +4,7 @@ library(readr)
 
 liver_data <- read.csv("data/5-unblinded data/liver_transformed.csv")
 
-data <- cbind(merged_Imputed_output, disease = merged_Imputed_output$disease)
+data <- cbind(merged_imputed_output[,2:ncol(merged_imputed_output)], Group = merged_imputed_output$Group)
 
 data$disease <- as.factor(data$disease)
 str(data)

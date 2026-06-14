@@ -27,7 +27,7 @@ class PCAPrcomp:
         self.output_path = os.path.join(os.path.dirname(__file__), 'output')
         # self.output_copy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'PCA', 'input')
         os.makedirs(self.output_path, exist_ok=True)
-        os.makedirs(self.output_copy_path, exist_ok=True)
+        # os.makedirs(self.output_copy_path, exist_ok=True)
 
     def pca_plot_variance(self, pca, scores, df):
         """Create a PCA plot."""

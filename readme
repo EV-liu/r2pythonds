@@ -1,0 +1,29 @@
+To clone this project:
+1. Clone the repo.
+2. Create a virtual environment.
+3. Activate it.
+4. Install the project dependencies from pyproject.toml.
+
+Typical commands on macOS/Linux:
+    git clone <repo-url>
+    cd r2pythonds
+    python3 -m venv .venv
+    source .venv/bin/activate
+    python -m pip install --upgrade pip
+    python -m pip install -e .
+
+Typical Windows PowerShell terminal:
+    git clone <repo-url>
+    cd r2pythonds
+    py -m venv .venv
+    .venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    python -m pip install -e .
+
+Typical Windows Command Prompt terminal:
+    git clone <repo-url>
+    cd r2pythonds
+    py -m venv .venv
+    .venv\Scripts\activate.bat
+    python -m pip install --upgrade pip
+    python -m pip install -e .
