@@ -47,54 +47,70 @@ def concat_df_horizontal(df_long, df_short, repeat_count=1):
         return pd.concat([df_long_reset, df_short_repeated], axis=1)
 
 # Step 1: Load the original dataset and filter it to create the base and replicate datasets.
-df_ori = extract_csv('TG.csv')
+df_ori = extract_csv('TG_65.csv')
+df_ori = df_ori.drop(columns=["rt_start","rt_end","data_points","parent_mz","product_mz"])
+
+df_ori.rename(columns={"run_start_time": "Aquisition Date & Time", 
+                          "name": "Compound Name", 
+                          "area": "Area"}, inplace=True)
+
 print(df_ori.shape)
 
-df_to_rep = df_ori[df_ori['name'].str.contains("IS TG", na=False)]
-df_to_rep = df_to_rep[["sample_id", "area", "name"]]
-df_to_rep["IS_name"] = df_to_rep["name"]
-df_to_rep = df_to_rep.drop(columns=["name"])
-df_to_rep["IS_area"] = df_to_rep["area"]
-df_to_rep = df_to_rep.drop(columns=["area"])
-df_to_rep["Sample_ID"] = df_to_rep["sample_id"]
-df_to_rep = df_to_rep.drop(columns=["sample_id"])
+df_to_rep = df_ori[df_ori['Compound Name'].str.contains("IS TG", na=False)]
+df_to_rep = df_to_rep[["sample_id", "Area", "Compound Name"]]
+
+df_to_rep.rename(columns={"Compound Name": "IS Name", "Area": "IS Area", "sample_id": "Sample_ID"}, inplace=True)
+
 print(df_to_rep.shape)
 
-df_base = df_ori[df_ori['name'].str.contains("IS TG", na=False) == False]
-df_base = df_base[df_base['name'].str.contains("IS", na=False) == False]
+df_base = df_ori[df_ori['Compound Name'].str.contains("IS TG", na=False) == False]
+df_base = df_base[df_base['Compound Name'].str.contains("IS", na=False) == False]
 print(df_base.shape)
 
 # Step 2: Load the samplename dataset and concatenate it with the replicate dataset, repeating as necessary to match the length of the base dataset.
 df_samplename =  extract_csv('samplename.csv')
-df_samplename["Sample_Name"] = df_samplename["Sample Name"]
-df_samplename = df_samplename.drop(columns=["Sample Name"])
+
+df_samplename["Sample Name"] = df_samplename["Sample_Name_65"]
+df_samplename = df_samplename[df_samplename["Sample_ID"]<66][["Sample Name"]]
 print(df_samplename.shape)
 
 df_combined = concat_df_horizontal(df_samplename, df_to_rep, repeat_count=1)
 print(df_combined.shape)
 
 # Step 3: Concatenate the base dataset with the repeated replicate dataset, ensuring that the final combined dataset has the same number of rows as the base dataset.
-repeat_count = math.ceil(len(df_base) / len(df_combined))
+quotient, remainder = divmod(len(df_base), len(df_combined))
+if remainder != 0:
+      raise ValueError(f"The length of df_base ({len(df_base)}) is not a multiple of the length of df_combined ({len(df_combined)}). Cannot repeat df_combined to match the length of df_base.")
+else:
+      repeat_count = quotient
+      
 df_combined_repeated = concat_df_horizontal(df_base, df_combined, repeat_count=repeat_count)
+
+df_combined_repeated["Retention Time"] = 1
+df_combined_repeated["IS Retention Time"] = 1
 
 # Step 4: Verify that the final combined dataset has correct repeated rows and the same number of rows as the base dataset
 repeat_length = len(df_combined)
-df_check1 = df_combined_repeated.iloc[:repeat_length]
-i = random.randint(1,repeat_count-1)
-df_check_random = df_combined_repeated.iloc[(i-1)*repeat_length:i*repeat_length]
+changed_count = 0
+for i in range(1, repeat_count):
+    df_check1 = df_combined_repeated.iloc[:repeat_length]
+    df_check_random = df_combined_repeated.iloc[(i-1)*repeat_length:i*repeat_length]
 
-check_df = detect_changes_between_dataframes(
-    df_check1,
-    df_check_random,
-    check_columns=['IS_name', "IS_area", 'Sample_Name', "Sample_ID"],
-    unique_key=['sample_id'],
-    detect_column_changes=True
-)
+    check_df = detect_changes_between_dataframes(
+        df_check1,
+        df_check_random,
+        check_columns=['IS Name', "IS Area", 'Sample Name', "Sample_ID"],
+        unique_key=['sample_id'],
+        detect_column_changes=True
+    )
 
-check_df = check_df[['sample_id', 'change_type', 'changes']]
-check_result = check_df[check_df['change_type'] != 'unchanged']
-print(f"Check if repeat correctly: {check_result.shape[0]} rows changed, should be 0 rows changed.")
+    check_df = check_df[['sample_id', 'change_type', 'changes']]
+    check_result = check_df[check_df['change_type'] != 'unchanged']
+    changed_count += check_result.shape[0]
+
+print(f"Check if repeat correctly: changed rows={changed_count}, should be 0.")
 
 # Step 5: Save the final combined dataset as a CSV file in the output folder.
-load_csv('TG_replicate.csv', df_combined_repeated)
+df_combined_repeated.drop(columns=["sample_id","Sample_ID"], inplace=True)
+load_csv('TG_mz.csv', df_combined_repeated)
 
