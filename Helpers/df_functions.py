@@ -128,14 +128,3 @@ def detect_changes_between_dataframes(
     result_df = merged_df[result_columns]
     return result_df
 
-def concat_df_horizontal(df_long, df_short, repeat_count=1):
-        """Concatenate two dataframes horizontally after repeating the shorter one."""
-        df_long_reset = df_long.reset_index(drop=True)
-        df_short_reset = df_short.reset_index(drop=True)
-
-        df_short_repeated = pd.concat([df_short_reset] * repeat_count, ignore_index=True)
-        df_short_repeated = df_short_repeated.iloc[:len(df_long_reset)].reset_index(drop=True)
-
-        return pd.concat([df_long_reset, df_short_repeated], axis=1)
-
-
