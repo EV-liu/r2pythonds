@@ -67,11 +67,13 @@ def Migration_line_plots(df_long: pd.DataFrame, output_dir: str = os.path.join(o
 
             group_data = group_data.sort_values("time")
 
-            ax.plot(
+            ax.errorbar(
                 group_data["time"],
                 group_data["mean_value"],
+                yerr=group_data["sd_value"],
                 marker="o",
                 linewidth=1.0,
+                capsize=3,
                 label=line_group,
             )
 
@@ -96,21 +98,20 @@ def Migration_line_plots(df_long: pd.DataFrame, output_dir: str = os.path.join(o
 
     return plot_df
 
-def Migration_box_plots(df_long: pd.DataFrame, df_pvalue: pd.DataFrame, output_dir: str = os.path.join(os.path.dirname(__file__), 'output')) -> pd.DataFrame:
+def Migration_box_plots(
+    df_long: pd.DataFrame,
+    df_pvalue: pd.DataFrame,
+    time_points: list = [0, 22],
+    output_dir: str = os.path.join(os.path.dirname(__file__), 'output'),
+) -> pd.DataFrame:
     df_all = df_long.copy()
-    df_all = df_all[df_all["time"].isin([0, 22])].copy()
+    df_all = df_all[df_all["time"].isin(time_points)].copy()
 
     df_cells = df_all[df_all["cell"].isin(["HCC1143", "HCC38"])].copy()
 
     # Force plotting order
-    time_order = [0, 22]
     group_order = ["Control", "Migration"]
-    x_order = [
-        (0, "Control"),
-        (0, "Migration"),
-        (22, "Control"),
-        (22, "Migration"),
-    ]
+    x_order = [(t, g) for t in time_points for g in group_order]
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -119,7 +120,10 @@ def Migration_box_plots(df_long: pd.DataFrame, df_pvalue: pd.DataFrame, output_d
 
     for (compound, cell), df_sub in df_cells.groupby(["compound", "cell"]):
         print(f"Start plotting compound: {compound}, cell: {cell}, data shape: {df_sub.shape}, save to: {output_path / f'box_{compound}_{cell}.png'} ")
-        fig, ax = plt.subplots(figsize=(8, 5))
+
+        # Scale figure width with the number of boxes so labels don't crowd.
+        fig_width = max(6, 2 * len(x_order))
+        fig, ax = plt.subplots(figsize=(fig_width, 5))
 
         box_data = []
         x_labels = []
@@ -166,9 +170,10 @@ def Migration_box_plots(df_long: pd.DataFrame, df_pvalue: pd.DataFrame, output_d
         if pd.isna(value_range) or value_range == 0:
             value_range = 1
 
+        # Position pairs are derived from time_points instead of hardcoded:
+        # time_points[0] -> (1, 2), time_points[1] -> (3, 4), etc.
         annotation_positions = {
-            0: (1, 2),  # 0-Control and 0-Migration
-            22: (3, 4),  # 22-Control and 22-Migration
+            t: (2 * i + 1, 2 * i + 2) for i, t in enumerate(time_points)
         }
 
         for time_value, (control_position, migration_position) in annotation_positions.items():
@@ -222,7 +227,6 @@ def Migration_box_plots(df_long: pd.DataFrame, df_pvalue: pd.DataFrame, output_d
                 zorder=5,
             )
 
-
         ax.set_title(f"{compound} | {cell}")
         ax.set_xlabel("Time-Group")
         ax.set_ylabel("Value")
@@ -232,7 +236,7 @@ def Migration_box_plots(df_long: pd.DataFrame, df_pvalue: pd.DataFrame, output_d
 
         safe_compound = "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in str(compound))
         safe_cell = "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in str(cell))
-        fig.savefig(output_path / f"box_{safe_compound}_{safe_cell}.png", dpi=300, bbox_inches="tight")
+        fig.savefig(output_path / f"box_{'_'.join(map(str, time_points))}_{safe_compound}_{safe_cell}.png", dpi=300, bbox_inches="tight")
         plt.close(fig)
 
     return df_all
@@ -438,8 +442,8 @@ if __name__ == "__main__":
     plot_df = Migration_line_plots(df_long)
     df_calculated = pd.read_csv(os.path.join(os.path.dirname(__file__), 'input', "condition_contrasts.csv"))
     df_pvalue = pValue_cleanup(df_calculated)
-    # Plot box plots for each compound and cell line and save them to the output directory
-    box_df = Migration_box_plots(df_long, df_pvalue)
+    # Plot box plots for each compound and cell line and with custom time points eg. [22], [0, 22], [0, 12, 18, 22]
+    box_df = Migration_box_plots(df_long, df_pvalue, time_points=[0, 12, 18, 22])
     df_estimation = estimation_cleanup(df_calculated)
     # Plot heatmaps for each cell line and save them to the output directory
     heatmap_df = Migration_heatmap_plots(df_estimation)
